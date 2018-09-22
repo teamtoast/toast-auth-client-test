@@ -3,117 +3,177 @@
     <head>
     <meta charset="utf-8"/>
     <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
-    <meta name="viewport" content="user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, width=device-width"/>
-    <title>Login Demo - Kakao JavaScript SDK</title>
-    <script src="//developers.kakao.com/sdk/js/kakao.min.js"></script>
-
+    <!-- Toast 서비스 전용 구글 클라이언트 ID -->
+    <meta name="google-signin-client_id" content="872963197199-ba4b693fotqoonndthff2oju4tgbk07q.apps.googleusercontent.com">
+    <meta name="viewport"
+    	content="user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, width=device-width"/>
+    <title>SNS 로그인 데모</title>
+    <script src="https://developers.kakao.com/sdk/js/kakao.min.js"></script>
+    <script src="https://apis.google.com/js/platform.js" async defer></script>
     </head>
     <body>
+    <div id="output"></div>
+    <br><hr><br>
+    <div class="g-signin2" data-onsuccess="onSignIn"></div>
+    <a href="#" onclick="ggSignOut();">구글 로그아웃</a>
+    <br><hr><br>
     <a id="kakao-login-btn"></a>
-    <a href="http://developers.kakao.com/logout"></a>
-    <div id="kakao-token"></div>
+    <a href="#" onclick="kkSignOut();">카카오톡 로그아웃</a>
+    <br><hr><br>
+    <fb:login-button scope="public_profile,email,user_gender,user_age_range,user_birthday" onlogin="checkLoginState();">
+	</fb:login-button>
+    <a href="#" onclick="fbSignOut();">페이스북 로그아웃</a>
+    <script>
+    	// Toast 서비스 전용 카카오톡/페이스북 ID
+    	var kakao_client_id = 'c434fedc81c70e45a57896e74a7cdf3b';
+    	var facebook_app_id = '473370866488955';
+    </script>
+    <!--
+		카카오톡 SDK
+	-->
     <script type='text/javascript'>
-      //<![CDATA[
-        // 사용할 앱의 JavaScript 키를 설정해 주세요.
-        Kakao.init('c434fedc81c70e45a57896e74a7cdf3b');
-        // 카카오 로그인 버튼을 생성합니다.
+        Kakao.init(kakao_client_id);
+        // 카카오톡 로그인 버튼을 생성합니다.
         Kakao.Auth.createLoginButton({
           container: '#kakao-login-btn',
           success: function(authObj) {
-            var str = document.getElementById("kakao-token");
-    		str.innerHTML = JSON.stringify(authObj);
+          	// 카카오톡 인증 이후에 받은 토큰 값입니다.
+          	var kakao_token = authObj.access_token;
+          	// 토큰 값을 HTML 화면에 출력합니다.
+            var output = document.getElementById("output");
+            output.innerHTML = "카카오톡 토큰: " + kakao_token + "<br>";
+
+            // 로그인 이후 카카오톡 회원 정보를 호출합니다.
+            Kakao.API.request({
+	        	url: '/v2/user/me',
+	        	success: function(res) {
+	        		// 이메일
+					var email = res.kakao_account.email;
+					// 이름
+					var name = null;
+					if(res.properties != null) {
+						name = res.properties.nickname;
+					}
+					// 성별
+					var gender = res.kakao_account.gender;
+					output.innerHTML += "이메일: " + email + "<br>";
+					output.innerHTML += "이름: " + name + "<br>";
+					output.innerHTML += "성별: " + gender + "<br>";
+	        	},
+	        	fail: function(error) {
+	        		alert(JSON.stringify(error));
+	        	}
+	        });
           },
           fail: function(err) {
              alert(JSON.stringify(err));
           }
         });
-      //]]>
+        function kkSignOut() {
+        	Kakao.Auth.logout();
+			// 로그아웃 수행 이후
+			var output = document.getElementById("output");
+			output.innerHTML = "카카오톡 토큰 로그아웃 완료";
+        }
     </script>
-
+    <!--
+    	페이스북 SDK
+   	-->
 	<script>
-	// This is called with the results from from FB.getLoginStatus().
-	function statusChangeCallback(response) {
-		console.log('statusChangeCallback');
-		console.log(response);
-		// The response object is returned with a status field that lets the
-		// app know the current login status of the person.
-		// Full docs on the response object can be found in the documentation
-		// for FB.getLoginStatus().
-		if (response.status === 'connected') {
-			// Logged into your app and Facebook.
-			testAPI();
-		} else if (response.status === 'not_authorized') {
-			// The person is logged into Facebook, but not your app.
-			document.getElementById('status').innerHTML = 'Please log ' +
-			'into this app.';
-		} else {
-			// The person is not logged into Facebook, so we're not sure if
-			// they are logged into this app or not.
-			document.getElementById('status').innerHTML = 'Please log ' +
-			'into Facebook.';
+		// FB.getLoginStatus() 함수에 의해 불려지는 함수입니다.
+		function statusChangeCallback(response) {
+			console.log('statusChangeCallback');
+			console.log(response);
+			// 사용자의 로그인 상태를 처리합니다.
+			if (response.status === 'connected') {
+				// 카카오톡 인증 이후에 받은 토큰 값입니다.
+	          	var facebook_token = response.authResponse.accessToken;
+	          	// 토큰 값을 HTML 화면에 출력합니다.
+	            var output = document.getElementById("output");
+	            output.innerHTML = "페이스북 토큰: " + facebook_token + "<br>";
+	            // 추가적인 정보를 받습니다.
+				FB.api('/me', {fields: 'email, name, gender'}, function(response) {
+					// 이메일
+					var email = response.email;
+					// 이름
+					var name = response.name;
+					// 성별
+					var gender = response.gender;
+					output.innerHTML += "이메일: " + email + "<br>";
+					output.innerHTML += "이름: " + name + "<br>";
+					output.innerHTML += "성별: " + gender + "<br>";
+				});
+			} else if (response.status === 'not_authorized') {
+				// 사용자가 페이스 북에 로그인을 했지만 우리 앱에 로그인을 하지 않은 경우
+			} else {
+				// 사용자가 페이스 북 로그인을 하지 않은 경우
+			}
 		}
-	}
-	// This function is called when someone finishes with the Login
-	// Button. See the onlogin handler attached to it in the sample
-	// code below.
-	function checkLoginState() {
-		FB.getLoginStatus(function(response) {
-			statusChangeCallback(response);
-		});
-	}
-	window.fbAsyncInit = function() {
-	FB.init({
-	appId : '473370866488955',
-	cookie : true, // enable cookies to allow the server to access 
-	// the session
-	xfbml : true, // parse social plugins on this page
-	version : 'v2.0' // use version 2.0
-	});
-	// Now that we've initialized the JavaScript SDK, we call 
-	// FB.getLoginStatus(). This function gets the state of the
-	// person visiting this page and can return one of three states to
-	// the callback you provide. They can be:
-	//
-	// 1. Logged into your app ('connected')
-	// 2. Logged into Facebook, but not your app ('not_authorized')
-	// 3. Not logged into Facebook and can't tell if they are logged into
-	// your app or not.
-	//
-	// These three cases are handled in the callback function.
-
-	FB.getLoginStatus(function(response) {
-	statusChangeCallback(response);
-	});
-
-	};
-
-	// Load the SDK asynchronously
-	(function(d, s, id) {
-	var js, fjs = d.getElementsByTagName(s)[0];
-	if (d.getElementById(id)) return;
-	js = d.createElement(s); js.id = id;
-	js.src = "//connect.facebook.net/en_US/sdk.js";
-	fjs.parentNode.insertBefore(js, fjs);
-	}(document, 'script', 'facebook-jssdk'));
-
-	// Here we run a very simple test of the Graph API after login is
-	// successful. See statusChangeCallback() for when this call is made.
-	function testAPI() {
-		console.log('Welcome! Fetching your information.... ');
-		FB.api('/me', {fields: 'email, name, gender'}, function(response) {
-			console.log('Successful login for: ' + response.name);
-			document.getElementById('status').innerHTML =
-			'Thanks for logging in, ' + response.name + '!';
-			console.log(JSON.stringify(response));
-		});
-	}
+		function checkLoginState() {
+			FB.getLoginStatus(function(response) {
+				statusChangeCallback(response);
+			});
+		}
+		// 페이스북 SDK 정보를 설정합니다.
+		window.fbAsyncInit = function() {
+			FB.init({
+				appId : facebook_app_id,
+				cookie : true,
+				xfbml : true,
+				version : 'v2.0'
+			});
+			FB.getLoginStatus(function(response) {
+				statusChangeCallback(response);
+			});
+		};
+		// 페이스북 SDK를 비동기적으로 불러옵니다.
+		(function(d, s, id) {
+			var js, fjs = d.getElementsByTagName(s)[0];
+			if (d.getElementById(id)) return;
+			js = d.createElement(s); js.id = id;
+			js.src = "https://connect.facebook.net/en_US/sdk.js";
+			fjs.parentNode.insertBefore(js, fjs);
+		} (document, 'script', 'facebook-jssdk'));
+		// 페이스북 로그아웃 함수입니다.
+		function fbSignOut() {
+			FB.logout(function(response) {
+				// 로그아웃 수행 이후
+				var output = document.getElementById("output");
+				output.innerHTML = "페이스북 로그아웃 완료";
+			});
+		}
 	</script>
-
-	<fb:login-button scope="public_profile,email,user_gender,user_age_range,user_birthday" onlogin="checkLoginState();">
-	</fb:login-button>
-
-	<div id="status">
-	</div>
-
+	<!--
+		구글 SDK
+	-->
+	<script>
+		// 구글 로그인 함수입니다.
+		function onSignIn(googleUser) {
+			// 구글 인증 이후에 받은 토큰 값입니다.
+          	var google_token = gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse().id_token;
+          	// 토큰 값을 HTML 화면에 출력합니다.
+            var output = document.getElementById("output");
+            output.innerHTML = "구글 토큰: " + google_token + "<br>";
+            var profile = googleUser.getBasicProfile();
+            // 이메일 주소
+            var email = profile.getEmail();
+            // 이름
+            var name = profile.getName();
+            // 성별 값은 기본 데이터가 아닙니다.
+            var gender = null;
+			output.innerHTML += "이메일: " + email + "<br>";
+			output.innerHTML += "이름: " + name + "<br>";
+			output.innerHTML += "성별: " + gender + "<br>";
+		}
+		// 구글 로그아웃 함수입니다.
+		function ggSignOut() {
+			var auth2 = gapi.auth2.getAuthInstance();
+			auth2.signOut().then(function () {
+				// 로그아웃 수행 이후
+				var output = document.getElementById("output");
+				output.innerHTML = "구글 로그아웃 완료";
+			});
+		}
+	</script>
     </body>
  </html>
